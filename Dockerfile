@@ -20,7 +20,7 @@ RUN export PIP_INDEX_URL=${PIP_INDEX_URL} && \
     export PIP_PRE=${PIP_PRE} && \
     pip install -r requirements.txt && \
     pip install repoze.vhm && \
-    pip install gunicorn && \
+    pip install gunicorn
 
 ENV VISUALISER_DATA_DIR="/var/opt/visualiser/" \
     AUTHTKT_SECRET="secret" \
