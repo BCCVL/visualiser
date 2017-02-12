@@ -16,7 +16,7 @@ COPY [ "files/entrypoint.sh", \
 
 RUN export PIP_INDEX_URL=${PIP_INDEX_URL} && \
     export PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST} && \
-    export PIP_NO_CACHE_DIR=True && \
+    export PIP_NO_CACHE_DIR=False && \
     export PIP_PRE=${PIP_PRE} && \
     pip install -r requirements.txt && \
     pip install repoze.vhm && \
