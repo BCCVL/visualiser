@@ -129,7 +129,7 @@ def get_requirements(project, target='./') {
     step([
         $class: 'CopyArtifact',
         filter: 'requirements.txt',
-        target: traget,
+        target: target,
         projectName: project,
         fingerprintArtifacts: true,
         // parameters ... allows to filter upstream projects based on parameters?
