@@ -31,10 +31,10 @@ node('docker') {
             // get version:
             img.inside() {
                 version = sh(script: 'python -c  \'import pkg_resources; print pkg_resources.get_distribution("BCCVL_Visualiser").version\'',
-                             returnStdout: true).trim().replaceAll('\\+','_')
+                             returnStdout: true).trim()
             }
             // now we know the version ... re-tag and delete old tag
-            imgversion = version + '-' + env.BUILD_NUMBER
+            imgversion = version.replaceAll('\\+','_') + '-' + env.BUILD_NUMBER
             img.tag(imgversion)
             // clear temporary image tag
             sh "docker rmi ${imgname}"
