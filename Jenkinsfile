@@ -23,7 +23,7 @@ node('docker') {
         stage('Build') {
 
             // get_requirements from last BCCVL Visualiser 'release' branch build
-            get_requirements('BCCVL_Visualiser/develop')
+            get_requirements('BCCVL Visualiser/develop')
 
             // TODO: determine dev or release build (changes pip options)
             img = docker.build(imgname, "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} . ")
