@@ -31,7 +31,7 @@ node('docker') {
             // get version:
             img.inside() {
                 version = sh(script: 'python -c  \'import pkg_resources; print pkg_resources.get_distribution("BCCVL_Visualiser").version\'',
-                             returnStdout: true).trim()
+                             returnStdout: true).trim().replaceAll('\\+','_')
             }
             // now we know the version ... re-tag and delete old tag
             imgversion = version + '-' + env.BUILD_NUMBER
