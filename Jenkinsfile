@@ -5,7 +5,6 @@ node('docker') {
     // set unique image name ... including BUILD_NUMBER to support parallel builds
     def basename = 'hub.bccvl.org.au/bccvl/visualiser'
     def imgversion = env.BUILD_NUMBER
-    def imgname = basename + ':' + imgversion
     def img = null
 
     def pip_pre = "True"
@@ -38,7 +37,8 @@ node('docker') {
             }
 
             // TODO: determine dev or release build (changes pip options)
-            img = docker.build(imgname, "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} --build-arg PIP_PRE=${pip_pre} . ")
+            img = docker.build("${basename}:${imgversion}",
+                               "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} --build-arg PIP_PRE=${pip_pre} . ")
 
             // get version:
             img.inside() {
@@ -47,13 +47,7 @@ node('docker') {
             }
             // now we know the version ... re-tag and delete old tag
             imgversion = version.replaceAll('\\+','_') + '-' + env.BUILD_NUMBER
-            img.tag(imgversion)
-            // clear temporary image tag
-            sh "docker rmi ${imgname}"
-            // set new imagename including correct version
-            imgname = basename + ':' + imgversion
-            // re init img object with correct name
-            img = docker.image(imgname)
+            img = reTagImage(img, basename, imgversion)
         }
 
         // test image
@@ -103,18 +97,14 @@ node('docker') {
             if (currentBuild.result == null || currentBuild.result == 'SUCCESS') {
                 // success
 
-                echo "Would push ${img.id}"
-                //img.push()
-                // notify team
-                //slackSend color: 'good', message: "New Image ${img.id}\n${env.JOB_URL}"
-
-                // TODO: decide if we want latest tag as well?
-                if (version.contains('.dev')) {
-                    echo "Would push latest ${img.id}"
-                    // img.push('latest')
-                    // notify team
-                    //slackSend color: 'good', message: "New Image ${img.id}:latest\n${env.JOB_URL}"
+                // if it is a dev version we push it as latest
+                if (isDevVersion(version)) {
+                    // re tag as latest
+                    img = reTagImage(img, basename, 'latest')
                 }
+                img.push()
+
+                slackSend color: 'good', message: "New Image ${img.id}\n${env.JOB_URL}"
 
             }
 
@@ -128,9 +118,6 @@ node('docker') {
         stage('Cleanup') {
             // clean up image
             sh "docker rmi ${img.id}"
-            if (version.contains('.dev')) {
-                echo "Also clean up latest tag ${img.id}"
-            }
         }
     }
 }
