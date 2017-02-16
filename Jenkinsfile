@@ -8,8 +8,16 @@ node('docker') {
     def imgname = basename + ':' + imgversion
     def img = null
 
+    def pip_pre = "True"
+    if (params.stage == 'rc' || params.stage == 'prod') {
+        pip_pre = "False"
+    }
+
     def INDEX_HOST = env.PIP_INDEX_HOST
     def INDEX_URL = "http://${INDEX_HOST}:3141/bccvl/dev/+simple/"
+    if (params.stage == 'rc' || params.stage == 'prod') {
+        INDEX_URL = "http://${INDEX_HOST}:3141/bccvl/prod/+simple/"
+    }
 
     try {
         // fetch source
@@ -22,11 +30,15 @@ node('docker') {
         // build image
         stage('Build') {
 
-            // get_requirements from last BCCVL Visualiser 'release' branch build
-            get_requirements('BCCVL Visualiser/develop')
+            // getRequirements from last BCCVL Visualiser 'release' branch build
+            if (params.stage == 'rc' || params.stage == 'prod') {
+                getRequirements('BCCVL_Visualiser_tags')
+            } else {
+                getRequirements('BCCVL_Visualiser/master')
+            }
 
             // TODO: determine dev or release build (changes pip options)
-            img = docker.build(imgname, "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} . ")
+            img = docker.build(imgname, "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} --build-arg PIP_PRE=${pip_pre} . ")
 
             // get version:
             img.inside() {
@@ -122,29 +134,3 @@ node('docker') {
         }
     }
 }
-
-
-def get_requirements(project, target='./') {
-
-    step([
-        $class: 'CopyArtifact',
-        filter: 'requirements.txt',
-        target: target,
-        projectName: project,
-        fingerprintArtifacts: true,
-        // parameters ... allows to filter upstream projects based on parameters?
-        // parameters: 'BRANCH_NAME=master'
-        // selector to pick last successful build
-        //selector: [$class: 'StatusBuildSelector', stable: true]
-        // selector to pick build that triggered this build
-        selector: [
-            $class: 'TriggeredBuildSelector',
-            allowUpstreamDependencies: false,
-            fallbackToLastSuccessful: true,
-            upstreamFilterStrategy: 'UseNewest'
-        ]
-    ])
-
-}
-
-
