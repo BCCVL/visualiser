@@ -5,7 +5,10 @@ node('docker') {
     // set unique image name ... including BUILD_NUMBER to support parallel builds
     def basename = 'hub.bccvl.org.au/bccvl/visualiser'
     def imgversion = env.BUILD_NUMBER
+    // variable to hold docker image object
     def img = null
+    // variable to hold visualiser version
+    def version = null
 
     def pip_pre = "True"
     if (params.stage == 'rc' || params.stage == 'prod') {
