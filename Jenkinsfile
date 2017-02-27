@@ -115,7 +115,7 @@ node('docker') {
     }
     catch (err) {
         echo "Running catch"
-        throw error
+        throw err
     }
     finally {
         stage('Cleanup') {
