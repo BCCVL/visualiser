@@ -11,16 +11,16 @@ node('docker') {
     def version = null
 
     def pip_pre = "True"
-    if (params.stage == 'rc' || params.stage == 'prod') {
+    if (params.stage == 'prod') {
+        // no pre releases allowed for prod build
         pip_pre = "False"
     }
 
-    def INDEX_HOST = env.PIP_INDEX_HOST
-    def INDEX_URL = "http://${INDEX_HOST}:3141/bccvl/dev/+simple/"
+    def PYPI_INDEX_CRED = 'pypi_index_url_dev'
     if (params.stage == 'rc' || params.stage == 'prod') {
-        INDEX_URL = "http://${INDEX_HOST}:3141/bccvl/prod/+simple/"
+        // no dev pre releases for rc and prod
+        PYPI_INDEX_CRED = 'pypi_index_url_prod'
     }
-
     try {
         // fetch source
         stage('Checkout') {
@@ -39,9 +39,13 @@ node('docker') {
                 getRequirements('BCCVL_Visualiser/master')
             }
 
-            // TODO: determine dev or release build (changes pip options)
-            img = docker.build("${basename}:${imgversion}",
-                               "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${INDEX_URL} --build-arg PIP_TRUSTED_HOST=${INDEX_HOST} --build-arg PIP_PRE=${pip_pre} . ")
+
+            withCredentials([string(credentialsId: PYPI_INDEX_CRED, variable: 'PYPI_INDEX_URL')]) {
+                docker.withRegistry('https://hub.bccvl.org.au', 'hub.bccvl.org.au') {
+                    img = docker.build("${basename}:${imgversion}",
+                                       "--rm --pull --no-cache --build-arg PIP_INDEX_URL=${PYPI_INDEX_URL} --build-arg PIP_PRE=${pip_pre} . ")
+                }
+            }
 
             // get version:
             img.inside() {
@@ -57,18 +61,20 @@ node('docker') {
         stage('Test') {
 
             // run unit tests inside built image
-            img.inside("-u root --env PIP_INDEX_URL=${INDEX_URL} --env PIP_TRUSTED_HOST=${INDEX_HOST}") {
-                withEnv(['PYTHONWARNINGS=ignore:Unverified HTTPS request']) {
-                    // get install location
-                    def testdir=sh(script: 'python -c \'import os.path, bccvl_visualiser; print os.path.dirname(bccvl_visualiser.__file__)\'',
-                                   returnStdout: true).trim()
-                    // install test dependies
-                    // TODO: would be better to use some requirements file to pin versions
-                    sh "pip install BCCVL_Visualiser[test]==${version}"
-                    // link ini file to test directory
-                    sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
-                    // run tests
-                    sh "nosetests -w ${testdir}"
+            withCredentials([string(credentialsId: PYPI_INDEX_CRED, variable: 'PYPI_INDEX_URL')]) {
+                img.inside("-u root --env PIP_INDEX_URL=${PYPI_INDEX_URL}") {
+                    withEnv(['PYTHONWARNINGS=ignore:Unverified HTTPS request']) {
+                        // get install location
+                        def testdir=sh(script: 'python -c \'import os.path, bccvl_visualiser; print os.path.dirname(bccvl_visualiser.__file__)\'',
+                                       returnStdout: true).trim()
+                        // install test dependies
+                        // TODO: would be better to use some requirements file to pin versions
+                        sh "pip install BCCVL_Visualiser[test]==${version}"
+                        // link ini file to test directory
+                        sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
+                        // run tests
+                        sh "nosetests -w ${testdir}"
+                    }
                 }
             }
 
