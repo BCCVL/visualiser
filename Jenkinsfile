@@ -66,7 +66,7 @@ node('docker') {
                         // link ini file to test directory
                         // sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
                         // run tests
-                        sh "pytest --pyarg BCCVL_Visualiser"
+                        sh "pytest --pyarg bccvl_visualiser"
                     }
                 }
             }
