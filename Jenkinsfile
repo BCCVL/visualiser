@@ -64,7 +64,7 @@ node('docker') {
                         // TODO: would be better to use some requirements file to pin versions
                         sh "pip install BCCVL_Visualiser[test]==${version} pytest"
                         // link ini file to test directory
-                        // sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
+                        sh "ln -s /etc/opt/visualiser/visualiser.ini ./development.ini"
                         // run tests
                         sh "pytest --pyarg bccvl_visualiser"
                     }
