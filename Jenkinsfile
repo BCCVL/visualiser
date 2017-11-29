@@ -21,9 +21,8 @@ node('docker') {
     try {
         // fetch source
         stage('Checkout') {
-
+            sh(script: 'git clean -x -d -f', returnStatus: true)
             checkout scm
-
         }
 
         // build image
@@ -114,8 +113,13 @@ node('docker') {
     }
     finally {
         stage('Cleanup') {
+            // clean git clone (removes all build files like virtualenv etc..)
+            sh 'git clean -x -d -f'
+
             // clean up image
-            sh "docker rmi ${img.id}"
+            if (img != null) {
+                sh "docker rmi ${img.id}"
+            }
         }
     }
 }
