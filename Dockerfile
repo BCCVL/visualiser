@@ -1,4 +1,4 @@
-FROM hub.bccvl.org.au/bccvl/visualiserbase:2017-11-09
+FROM hub.bccvl.org.au/bccvl/visualiserbase:2017-11-29
 
 # configure pypi index to use
 ARG PIP_INDEX_URL
@@ -20,7 +20,8 @@ RUN export PIP_INDEX_URL=${PIP_INDEX_URL} && \
     export PIP_PRE=${PIP_PRE} && \
     pip install -r requirements.txt && \
     pip install repoze.vhm && \
-    pip install gunicorn
+    pip install gunicorn && \
+    pip install raven BCCVL_Visualiser
 
 ENV VISUALISER_DATA_DIR="/var/opt/visualiser/" \
     AUTHTKT_SECRET="secret" \
