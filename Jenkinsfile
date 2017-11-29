@@ -11,16 +11,13 @@ node('docker') {
     def version = null
 
     def pip_pre = "True"
+    def PYPI_INDEX_CRED = 'pypi_index_url_dev'
     if (params.stage == 'prod') {
         // no pre releases allowed for prod build
         pip_pre = "False"
-    }
-
-    def PYPI_INDEX_CRED = 'pypi_index_url_dev'
-    if (params.stage == 'rc' || params.stage == 'prod') {
-        // no dev pre releases for rc and prod
         PYPI_INDEX_CRED = 'pypi_index_url_prod'
     }
+
     try {
         // fetch source
         stage('Checkout') {
@@ -33,12 +30,11 @@ node('docker') {
         stage('Build') {
 
             // getRequirements from last BCCVL Visualiser 'release' branch build
-            if (params.stage == 'rc' || params.stage == 'prod') {
+            if (params.stage == 'prod') {
                 getRequirements('BCCVL_Visualiser_tags')
             } else {
                 getRequirements('BCCVL_Visualiser/master')
             }
-
 
             withCredentials([string(credentialsId: PYPI_INDEX_CRED, variable: 'PYPI_INDEX_URL')]) {
                 docker.withRegistry('https://hub.bccvl.org.au', 'hub.bccvl.org.au') {
@@ -64,16 +60,13 @@ node('docker') {
             withCredentials([string(credentialsId: PYPI_INDEX_CRED, variable: 'PYPI_INDEX_URL')]) {
                 img.inside("-u root --env PIP_INDEX_URL=${PYPI_INDEX_URL}") {
                     withEnv(['PYTHONWARNINGS=ignore:Unverified HTTPS request']) {
-                        // get install location
-                        def testdir=sh(script: 'python -c \'import os.path, bccvl_visualiser; print os.path.dirname(bccvl_visualiser.__file__)\'',
-                                       returnStdout: true).trim()
                         // install test dependies
                         // TODO: would be better to use some requirements file to pin versions
-                        sh "pip install BCCVL_Visualiser[test]==${version}"
+                        sh "pip install BCCVL_Visualiser[test]==${version} pytest"
                         // link ini file to test directory
-                        sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
+                        // sh "ln -s /etc/opt/visualiser/visualiser.ini ${testdir}/development.ini"
                         // run tests
-                        sh "nosetests -w ${testdir}"
+                        sh "pytest --pyarg BCCVL_Visualiser"
                     }
                 }
             }
@@ -105,13 +98,9 @@ node('docker') {
 
             if (currentBuild.result == null || currentBuild.result == 'SUCCESS') {
                 // success
-
-                // if it is a dev version we push it as latest
-                if (isDevVersion(version)) {
-                    // re tag as latest
-                    img = reTagImage(img, basename, 'latest')
+                docker.withRegistry('https://hub.bccvl.org.au', 'hub.bccvl.org.au') {
+                    img.push()
                 }
-                img.push()
 
                 slackSend color: 'good', message: "New Image ${img.id}\n${env.JOB_URL}"
 
